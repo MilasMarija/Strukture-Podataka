@@ -1,0 +1,224 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#define MAX_SIZE 50
+
+struct _tree;
+typedef struct _tree* Position;
+typedef struct _tree {
+	char grad[MAX_SIZE];
+	int broj_stanovnika;
+	Position left;
+	Position right;
+}tree;
+
+struct _list;
+typedef struct _list* LPosition;
+typedef struct _list {
+	char drzava[MAX_SIZE];
+	Position grad;
+	LPosition next;
+}list;
+
+int InsertIntoListFromFile(LPosition head, char* filename);
+int InsertIntoTreeFromFile(LPosition drzava, char* filename);
+int SortedInputList(LPosition head, LPosition newElement);
+int InsertAfter(LPosition head, LPosition newElement);
+LPosition CreateNewListElement(char* drzava);
+Position CreateNewTreeElement(char* grad, int broj_stanovnika);
+Position SortedInputTree(Position root, Position newElement);
+int PrintList(LPosition first);
+int PrintTree(Position root);
+int menu(LPosition head);
+int CitiesWithBiggerPopulation(Position current, int min_broj_stanovnika);
+LPosition FindListElementByName(LPosition head,char* country);
+
+int main()
+{
+	list head = { .drzava = {0}, .grad = NULL, .next = NULL };
+	LPosition listaDrzava = &head;
+	char filename[] = "drzave.txt";
+
+	InsertIntoListFromFile(listaDrzava, filename);
+	PrintList(listaDrzava);
+	menu(listaDrzava);
+
+	return 0;
+}
+int menu(LPosition head)
+{
+	char search[MAX_SIZE] = { 0 };
+	int broj_stanovnika = 0;
+	LPosition temp = NULL;
+
+	printf("Type 'exit' for exiting!\nSearch country:");
+	while (scanf(" %s", search) == 1) {
+		if (strcmp(search, "exit") == 0)
+			break;
+		printf("Minimalan broj stanovnika: ");
+		scanf(" %d", &broj_stanovnika);
+		temp = FindListElementByName(head, search);
+		if (temp) {
+			CitiesWithBiggerPopulation(head->grad, broj_stanovnika);
+		}
+		else
+			printf("There is no such country!");
+		printf("\nSearch country:");
+	}
+}
+int CitiesWithBiggerPopulation(Position current, int min_broj_stanovnika)
+{
+	if (current == NULL)
+		return EXIT_SUCCESS;
+	if (current->broj_stanovnika < min_broj_stanovnika)
+		CitiesWithBiggerPopulation(current->right, min_broj_stanovnika);
+	else{
+		printf("City: %s\tPopulation: %d\n", current->grad, current->broj_stanovnika);
+		CitiesWithBiggerPopulation(current->right, min_broj_stanovnika);
+		CitiesWithBiggerPopulation(current->left, min_broj_stanovnika);
+	}
+
+	return EXIT_SUCCESS;
+}
+LPosition FindListElementByName(LPosition head, char* country)
+{
+	LPosition temp = NULL;
+	temp = head;
+
+	while (temp != NULL) {
+		if (strcmp(temp->drzava, country) == 0)
+			return temp;
+		temp = temp->next;
+	}
+
+	return NULL;
+}
+int InsertIntoListFromFile(LPosition head, char* filename)
+{
+	FILE* f = NULL;
+	f = fopen(filename, "r");
+	if (!f) {
+		printf("Greska!\n");
+		return -1;
+	}
+	char ime_drzave[MAX_SIZE] = { 0 };
+	char ime_grada[MAX_SIZE] = { 0 };
+
+	list t = { .drzava = "", .grad = NULL, .next = NULL };
+	LPosition temp = &t;
+
+	while (!feof(f)) {
+		fscanf(f, "%s %s\n", ime_drzave, ime_grada);
+		temp = CreateNewListElement(ime_drzave);
+		InsertIntoTreeFromFile(temp, ime_grada);
+		SortedInputList(head, temp);
+	}
+	fclose(f);
+
+	return EXIT_SUCCESS;
+}
+LPosition CreateNewListElement(char* drzava)
+{
+	LPosition newElement = NULL;
+	newElement = (LPosition)malloc(sizeof(list));
+	if (!newElement) {
+		perror("Can't allocate memory!");
+		return -1;
+	}
+	strcpy(newElement->drzava, drzava);
+	newElement->grad = NULL;
+	newElement->next = NULL;
+
+	return newElement;
+}
+Position CreateNewTreeElement(char* grad, int broj_stanovnika)
+{
+	Position newElement = NULL;
+	newElement = (Position)malloc(sizeof(tree));
+	if (!newElement) {
+		perror("Can't allocate memory!");
+		return -1;
+	}
+
+	strcpy(newElement->grad, grad);
+	newElement->broj_stanovnika = broj_stanovnika;
+	newElement->left = NULL;
+	newElement->right = NULL;
+
+	return newElement;
+}
+int InsertIntoTreeFromFile(LPosition listaDrzave, char* filename)
+{
+	FILE* f = NULL;
+	f = fopen(filename, "r");
+	if (!f) {
+		printf("Greska!");
+		return -1;
+	}
+	char ime_grada[MAX_SIZE] = { 0 };
+	int broj_stanovnika = 0;
+
+	while (!feof(f)) {
+		fscanf(f, "%s %d", ime_grada, &broj_stanovnika);
+		Position temp = CreateNewTreeElement(ime_grada, broj_stanovnika);
+		listaDrzave->grad = SortedInputTree(listaDrzave->grad, temp);
+	}
+	fclose(f);
+
+	return EXIT_SUCCESS;
+}
+int SortedInputList(LPosition head, LPosition newElement)
+{
+	LPosition temp = NULL;
+	temp = head->next;
+
+	while (temp != NULL && strcmp(temp->drzava, newElement->drzava) > 0) {
+		temp = temp->next;
+	}
+	InsertAfter(newElement, head);
+
+	return EXIT_SUCCESS;
+}
+int InsertAfter(LPosition newElement, LPosition head)
+{
+	newElement->next = head->next;
+	head->next = newElement;
+
+	return EXIT_SUCCESS;
+}
+int PrintList(LPosition head)
+{
+	LPosition temp = head->next;
+
+	while (temp) {
+		printf("%s\n", temp->drzava);
+		PrintTree(temp->grad);
+		temp = temp->next;
+	}
+
+	return EXIT_SUCCESS;
+}
+int PrintTree(Position root)
+{
+	if (!root)
+		return 0;
+	PrintTree(root->left);
+	printf("\n\t%s - %d stanovnika\n", root->grad, root->broj_stanovnika);
+	PrintTree(root->right);
+
+	return EXIT_SUCCESS;
+}
+Position SortedInputTree(Position root, Position newElement)
+{
+	if (!root)
+		return newElement;
+	if (root->broj_stanovnika <= newElement->broj_stanovnika) {
+		root->right = SortedInputTree(root->right, newElement);
+	}
+	else if (root->broj_stanovnika > newElement->broj_stanovnika) {
+		root->left = SortedInputTree(root->left, newElement);
+	}
+
+	return root;
+}
